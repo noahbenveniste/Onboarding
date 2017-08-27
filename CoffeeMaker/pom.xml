@@ -192,7 +192,6 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
 				<configuration>
-					<!-- <excludes> <exclude>**/selenium/**/*.java</exclude> </excludes> -->
 					<skip>true</skip>
 				</configuration>
 				<executions>
@@ -244,7 +243,6 @@
 				</executions>
 			</plugin>
 			<plugin>
-				<!-- https://www.petrikainulainen.net/programming/maven/creating-code-coverage-reports-for-unit-and-integration-tests-with-the-jacoco-maven-plugin/ -->
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
 				<version>0.7.5.201505241946</version>
@@ -359,8 +357,6 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-checkstyle-plugin</artifactId>
 				<version>2.17</version>
-				<!-- <configuration> <configLocation>**/csc_checkstyle.xml</configLocation> 
-					</configuration> -->
 			</plugin>
 		</plugins>
 	</reporting>
@@ -379,4 +375,5 @@
 	</pluginRepositories>
 
 	<!-- References https://vorba.ch/2016/integration-testing-spring-boot-travis-saucelabs.html -->
+	<!-- References https://www.petrikainulainen.net/programming/maven/creating-code-coverage-reports-for-unit-and-integration-tests-with-the-jacoco-maven-plugin/ -->
 </project>
