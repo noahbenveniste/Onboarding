@@ -2,7 +2,7 @@
  
 angular.module('myApp').factory('AddRecipeService', ['$http', '$q', function($http, $q){
  
-    var REST_SERVICE_URI = 'http://localhost:8080/api/v1/recipes';
+    var REST_SERVICE_URI = '/api/v1/recipes';
  
     var factory = {
     		addRecipe: addRecipe,
