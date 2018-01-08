@@ -29,7 +29,7 @@ public class UpdateInventoryTest extends SeleniumTest {
     protected void setUp () throws Exception {
         super.setUp();
 
-        driver = new HtmlUnitDriver();
+        driver = new HtmlUnitDriver(true);
         baseUrl = "http://localhost:8080";
         driver.manage().timeouts().implicitlyWait( 10, TimeUnit.SECONDS );
 

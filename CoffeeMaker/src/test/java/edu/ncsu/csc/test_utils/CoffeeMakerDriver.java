@@ -14,7 +14,7 @@ import org.openqa.selenium.support.events.EventFiringWebDriver;
  * @author Elizabeth Gilbert
  */
 public class CoffeeMakerDriver extends EventFiringWebDriver {
-    private static final WebDriver REAL_DRIVER  = new HtmlUnitDriver();
+    private static final WebDriver REAL_DRIVER  = new HtmlUnitDriver(true);
     private static final String    BASE_URL     = "http://localhost:8080";
     private static final Thread    CLOSE_THREAD = new Thread() {
                                                     @Override

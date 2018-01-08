@@ -1,5 +1,7 @@
 package edu.ncsu.csc.cucumber;
 
+import java.util.List;
+
 import org.junit.Assert;
 
 import cucumber.api.java.en.Given;
@@ -96,6 +98,11 @@ public class InventoryStepDefs {
     @Given ( "^there is (-?\\d+) coffee, (-?\\d+) milk, (-?\\d+) sugar, and (-?\\d+) chocolate in the CoffeeMaker$" )
     public void initialInventory ( final int originalCoffee, final int originalMilk, final int originalSugar,
             final int originalChocolate ) {
+    	List<Recipe> all = coffeeMaker.getRecipes();
+    	for(Recipe r:all) {
+    		coffeeMaker.deleteRecipe(r);
+    	}
+    	
         inventoryData.originalCoffee = originalCoffee;
         inventoryData.originalMilk = originalMilk;
         inventoryData.originalSugar = originalSugar;
