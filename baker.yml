@@ -1,24 +1,21 @@
 ---
 name: onboard
-
-# Define virtual machine configurations here
 vagrant:
-  box: "ubuntu/xenial64"
-
-  # Configure the amount of your host machine's memory that you want to
-  # share with the virtual machin (* required)
-  memory: "1024"
-
-  network:
-    # Create a private network for your virtual machine and set the local IP for your VM
-    # A private network with a static IP is required by Baker server to be able to communicate with your VM.
-    # (* required)
-    - private_network:
-        ip: "192.168.8.8"
-
-bake:
-   ansible:
-     source: env/
-     playbooks:
-       - provision.yml
-       - mysql.yml
+  ip: "192.168.8.8"
+vars:
+  - mysql_password:
+      prompt: Type your password for mysql server
+tools:
+  - maven
+services:
+  - mysql:
+      version: 5.7
+      service_conf: env/templates/mysql.cfg
+      client_conf: env/templates/my.cnf
+lang:
+  - java8
+config:
+  - template: 
+      src: env/templates/hibernate-template.cfg.xml 
+      dest: /Onboarding/CoffeeMaker/src/main/resources/hibernate.cfg.xml
+start: cd /Onboarding/CoffeeMaker && mvn spring-boot:run
