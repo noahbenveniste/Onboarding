@@ -23,12 +23,15 @@ public class DeleteRecipeTest extends SeleniumTest {
     private String             baseUrl;
     private final StringBuffer verificationErrors = new StringBuffer();
 
+    private String             recipeName;
+
     @Override
     @Before
     protected void setUp () throws Exception {
         super.setUp();
 
-        driver = new HtmlUnitDriver();
+        recipeName = "CoffeeRecipe";
+        driver = new HtmlUnitDriver( true );
         baseUrl = "http://localhost:8080";
         driver.manage().timeouts().implicitlyWait( 10, TimeUnit.SECONDS );
 
@@ -59,8 +62,9 @@ public class DeleteRecipeTest extends SeleniumTest {
         driver.findElement( By.cssSelector( "input[type=\"radio\"]" ) ).click();
         driver.findElement( By.cssSelector( "input[type=\"submit\"]" ) ).click();
 
-        // Make sure the proper message was displayed.
-        assertTrue( driver.getPageSource().contains( "deleted" ) );
+        driver.get( baseUrl + "" );
+        driver.findElement( By.linkText( "Delete Recipe" ) ).click();
+        assertTrue( !driver.getPageSource().contains( recipeName ) );
 
         driver.findElement( By.linkText( "Home" ) ).click();
     }
@@ -76,7 +80,7 @@ public class DeleteRecipeTest extends SeleniumTest {
 
         // Enter the recipe information
         driver.findElement( By.name( "name" ) ).clear();
-        driver.findElement( By.name( "name" ) ).sendKeys( "Coffee" );
+        driver.findElement( By.name( "name" ) ).sendKeys( recipeName );
         driver.findElement( By.name( "price" ) ).clear();
         driver.findElement( By.name( "price" ) ).sendKeys( "50" );
         driver.findElement( By.name( "coffee" ) ).clear();
