@@ -1,6 +1,6 @@
 ---
 name: onboard
-vagrant:
+vm:
   ip: "192.168.8.8"
 vars:
   - mysql_password:
