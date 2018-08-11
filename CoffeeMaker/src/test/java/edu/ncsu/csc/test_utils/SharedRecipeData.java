@@ -1,5 +1,6 @@
 package edu.ncsu.csc.test_utils;
 
+import java.util.List;
 import java.util.Vector;
 
 import edu.ncsu.csc.coffee_maker.models.persistent.Recipe;
@@ -12,15 +13,15 @@ import edu.ncsu.csc.coffee_maker.models.persistent.Recipe;
  */
 public class SharedRecipeData {
     /** Last recipe added */
-    public boolean        latestRecipeAdded;
+    public boolean      latestRecipeAdded;
     /** Current recipe */
-    public Recipe         currentRecipe;
+    public Recipe       currentRecipe;
     /** List of recipse */
-    public Vector<Recipe> currentRecipeList;
+    public List<Recipe> currentRecipeList;
     /** Recipe index */
-    public int            index;
+    public int          index;
     /** Error messages */
-    public String         recipeError;
+    public String       recipeError;
 
     /**
      * Initializes the shared data.

@@ -5,6 +5,9 @@ import java.util.List;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
+import org.openqa.selenium.chrome.ChromeDriver;
+
+import com.paulhammant.ngwebdriver.NgWebDriver;
 
 import junit.framework.TestCase;
 
@@ -16,8 +19,58 @@ import junit.framework.TestCase;
  */
 abstract class SeleniumTest extends TestCase {
 
+    final static private String OS = System.getProperty( "os.name" );
+
+    static protected WebDriver  driver;
+
     @Override
     protected void setUp () throws Exception {
+        driver = BrowserHandler.getInstance().getDriver();
+    }
+
+    static private boolean Mac () {
+        return OS.contains( "Mac OS X" );
+    }
+
+    static private boolean Linux () {
+        return OS.contains( "Linux" );
+    }
+
+    static private boolean Windows () {
+        return OS.contains( "Windows" );
+    }
+
+    public void close () {
+        driver.close();
+        driver.quit();
+
+        if ( Windows() ) {
+            windowsKill();
+        }
+        else if ( Linux() || Mac() ) {
+            unixKill();
+        }
+
+    }
+
+    static private void windowsKill () {
+        try {
+            Runtime.getRuntime().exec( "taskkill /f /im chrome.exe" );
+            Runtime.getRuntime().exec( "taskkill /f /im chromedriver.exe" );
+        }
+        catch ( final Exception e ) {
+        }
+    }
+
+    static private void unixKill () {
+        try {
+            Runtime.getRuntime().exec( "pkill -f chromium-browser" );
+            Runtime.getRuntime().exec( "pkill -f chrome" );
+            Runtime.getRuntime().exec( "pkill -f chromedriver" );
+        }
+        catch ( final Exception e ) {
+        }
+
     }
 
     /**
@@ -45,6 +98,13 @@ abstract class SeleniumTest extends TestCase {
     public void assertTextNotPresent ( final String text, final WebDriver driver ) {
         assertFalse( "Text should not be found!",
                 driver.findElement( By.cssSelector( "BODY" ) ).getText().contains( text ) );
+    }
+
+    /**
+     * wait method that will let angular finish loading before continuing
+     */
+    protected void waitForAngular () {
+        new NgWebDriver( (ChromeDriver) driver ).waitForAngularRequestsToFinish();
     }
 
 }

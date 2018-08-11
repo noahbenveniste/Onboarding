@@ -1,13 +1,11 @@
 package edu.ncsu.csc.cucumber;
 
-import java.util.List;
-
 import org.junit.Assert;
 
 import cucumber.api.java.en.Given;
 import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
-import edu.ncsu.csc.coffee_maker.models.CoffeeMaker;
+import edu.ncsu.csc.coffee_maker.models.persistent.DomainObject;
 import edu.ncsu.csc.coffee_maker.models.persistent.Inventory;
 import edu.ncsu.csc.coffee_maker.models.persistent.Recipe;
 import edu.ncsu.csc.test_utils.SharedInventoryData;
@@ -22,21 +20,17 @@ import edu.ncsu.csc.test_utils.SharedInventoryData;
  *
  */
 public class InventoryStepDefs {
-    private final CoffeeMaker         coffeeMaker;
     private final SharedInventoryData inventoryData;
 
     /**
      * Constructor
      *
-     * @param cm
-     *            CoffeeMaker to use
      * @param sid
      *            SharedInventoryData; basically a backup copy of the inventory
      *            to make sure that changes made to the "real" one are what is
      *            expected
      */
-    public InventoryStepDefs ( final CoffeeMaker cm, final SharedInventoryData sid ) {
-        this.coffeeMaker = cm;
+    public InventoryStepDefs ( final SharedInventoryData sid ) {
         this.inventoryData = sid;
 
     }
@@ -58,27 +52,16 @@ public class InventoryStepDefs {
      */
     public void removeInventoryHelper ( final int removeCoffee, final int removeMilk, final int removeSugar,
             final int removeChocolate ) {
-        // add a recipe that uses the exact amounts needed to remove
-        final Recipe tempRecipe = new Recipe();
-        try {
-            tempRecipe.setName( "tempRecipeRemoveInventory" );
-            tempRecipe.setCoffee( removeCoffee );
-            tempRecipe.setMilk( removeMilk );
-            tempRecipe.setSugar( removeSugar );
-            tempRecipe.setChocolate( removeChocolate );
-            tempRecipe.setPrice( 0 );
-            coffeeMaker.addRecipe( tempRecipe );
-        }
-        catch ( final Exception e ) {
-            e.printStackTrace();
-        }
 
-        // purchase the amount of coffee necessary to deplete the inventory
-        coffeeMaker.makeCoffee( tempRecipe, 0 );
+        final Inventory currentInventory = Inventory.getInventory();
 
-        // remove the temporary recipe so that it doesn't impact future
-        // tests/steps
-        coffeeMaker.deleteRecipe( tempRecipe );
+        final Recipe r = new Recipe();
+        r.setCoffee( removeCoffee );
+        r.setMilk( removeMilk );
+        r.setSugar( removeSugar );
+        r.setChocolate( removeChocolate );
+
+        currentInventory.useIngredients( r );
     }
 
     /**
@@ -98,73 +81,17 @@ public class InventoryStepDefs {
     @Given ( "^there is (-?\\d+) coffee, (-?\\d+) milk, (-?\\d+) sugar, and (-?\\d+) chocolate in the CoffeeMaker$" )
     public void initialInventory ( final int originalCoffee, final int originalMilk, final int originalSugar,
             final int originalChocolate ) {
-    	List<Recipe> all = coffeeMaker.getRecipes();
-    	for(Recipe r:all) {
-    		coffeeMaker.deleteRecipe(r);
-    	}
-    	
+        DomainObject.deleteAll( Recipe.class );
+
+        DomainObject.deleteAll( Inventory.class );
+        final Inventory i = Inventory.getInventory();
+        i.addIngredients( originalCoffee, originalMilk, originalSugar, originalChocolate );
+        i.save();
+
         inventoryData.originalCoffee = originalCoffee;
         inventoryData.originalMilk = originalMilk;
         inventoryData.originalSugar = originalSugar;
         inventoryData.originalChocolate = originalChocolate;
-        final String unparsedInventory = coffeeMaker.checkInventory();
-        final String[] inventoryComponents = unparsedInventory.split( "\n" );
-        int coffee1 = 0;
-        int milk1 = 0;
-        int sugar1 = 0;
-        int chocolate1 = 0;
-        for ( int i = 0; i < inventoryComponents.length; i++ ) {
-            final String c = inventoryComponents[i];
-            if ( c.toLowerCase().contains( "coffee" ) ) {
-                coffee1 = Integer.parseInt( c.replaceAll( "\\D+", "" ) );
-            }
-            if ( c.toLowerCase().contains( "milk" ) ) {
-                milk1 = Integer.parseInt( c.replaceAll( "\\D+", "" ) );
-            }
-            if ( c.toLowerCase().contains( "sugar" ) ) {
-                sugar1 = Integer.parseInt( c.replaceAll( "\\D+", "" ) );
-            }
-            if ( c.toLowerCase().contains( "chocolate" ) ) {
-                chocolate1 = Integer.parseInt( c.replaceAll( "\\D+", "" ) );
-            }
-        }
-        int coffeeToAdd = originalCoffee - coffee1;
-        int milkToAdd = originalMilk - milk1;
-        int sugarToAdd = originalSugar - sugar1;
-        int chocolateToAdd = originalChocolate - chocolate1;
-
-        int subtractCoffee = 0, subtractMilk = 0, subtractSugar = 0, subtractChocolate = 0;
-        boolean tooMuchInventory = false;
-        if ( coffeeToAdd < 0 ) {
-            subtractCoffee = 0 - coffeeToAdd;
-            coffeeToAdd = 0;
-            tooMuchInventory = true;
-        }
-        if ( milkToAdd < 0 ) {
-            subtractMilk = 0 - milkToAdd;
-            milkToAdd = 0;
-            tooMuchInventory = true;
-        }
-        if ( sugarToAdd < 0 ) {
-            subtractSugar = 0 - sugarToAdd;
-            sugarToAdd = 0;
-            tooMuchInventory = true;
-        }
-        if ( chocolateToAdd < 0 ) {
-            subtractChocolate = 0 - chocolateToAdd;
-            chocolateToAdd = 0;
-            tooMuchInventory = true;
-        }
-        if ( tooMuchInventory ) {
-            removeInventoryHelper( subtractCoffee, subtractMilk, subtractSugar, subtractChocolate );
-        }
-
-        try {
-            coffeeMaker.addInventory( coffeeToAdd, milkToAdd, sugarToAdd, chocolateToAdd );
-        }
-        catch ( final Exception e ) {
-            Assert.fail( "Inventory not added. InventoryException thrown" );
-        }
     }
 
     /**
@@ -187,7 +114,9 @@ public class InventoryStepDefs {
         inventoryData.newSugar = amtSugar;
         inventoryData.newChocolate = amtChocolate;
         try {
-            coffeeMaker.addInventory( amtCoffee, amtMilk, amtSugar, amtChocolate );
+            final Inventory inventory = Inventory.getInventory();
+            inventory.addIngredients( amtCoffee, amtMilk, amtSugar, amtChocolate );
+            inventory.save();
         }
         catch ( final Exception e ) {
             Assert.fail( "Inventory not added. InventoryException thrown" );
@@ -211,7 +140,9 @@ public class InventoryStepDefs {
     public void invalidAddInventory ( final int amtCoffee, final int amtMilk, final int amtSugar,
             final int amtChocolate ) {
         try {
-            coffeeMaker.addInventory( amtCoffee, amtMilk, amtSugar, amtChocolate );
+            final Inventory inventory = Inventory.getInventory();
+            inventory.addIngredients( amtCoffee, amtMilk, amtSugar, amtChocolate );
+            inventory.save();
             Assert.fail( "Inventory added without throwing an error." );
         }
         catch ( final Exception e ) {
@@ -242,11 +173,12 @@ public class InventoryStepDefs {
         inventoryData.newChocolate = amtChocolate;
 
         try {
-            final Inventory inventory = coffeeMaker.getInventory();
+            final Inventory inventory = Inventory.getInventory();
             inventory.setCoffee( amtCoffee );
             inventory.setMilk( amtMilk );
             inventory.setSugar( amtSugar );
             inventory.setChocolate( amtChocolate );
+            inventory.save();
         }
         catch ( final Exception e ) {
             Assert.fail( "Inventory not added. InventoryException thrown" );
@@ -261,29 +193,12 @@ public class InventoryStepDefs {
     @Then ( "^the inventory of the CoffeeMaker is not updated$" )
     public void inventoryNotUpdated () {
 
-        // Get the current inventory and break it into its components
-        final String unparsedInventory = coffeeMaker.checkInventory();
-        final String[] inventoryComponents = unparsedInventory.split( "\n" );
+        final Inventory inventory = Inventory.getInventory();
+        final int coffee2 = inventory.getCoffee();
+        final int milk2 = inventory.getMilk();
+        final int sugar2 = inventory.getSugar();
+        final int chocolate2 = inventory.getChocolate();
 
-        int coffee2 = 0;
-        int milk2 = 0;
-        int sugar2 = 0;
-        int chocolate2 = 0;
-        for ( int i = 0; i < inventoryComponents.length; i++ ) {
-            final String c = inventoryComponents[i];
-            if ( c.toLowerCase().contains( "coffee" ) ) {
-                coffee2 = Integer.parseInt( c.replaceAll( "\\D+", "" ) );
-            }
-            if ( c.toLowerCase().contains( "milk" ) ) {
-                milk2 = Integer.parseInt( c.replaceAll( "\\D+", "" ) );
-            }
-            if ( c.toLowerCase().contains( "sugar" ) ) {
-                sugar2 = Integer.parseInt( c.replaceAll( "\\D+", "" ) );
-            }
-            if ( c.toLowerCase().contains( "chocolate" ) ) {
-                chocolate2 = Integer.parseInt( c.replaceAll( "\\D+", "" ) );
-            }
-        }
         // Verify that the inventory is unchanged
         Assert.assertEquals( "Coffee not correct", inventoryData.originalCoffee, coffee2 );
         Assert.assertEquals( "Milk not correct", inventoryData.originalMilk, milk2 );
@@ -304,30 +219,11 @@ public class InventoryStepDefs {
         final int expectedSugar = inventoryData.originalSugar + inventoryData.newSugar;
         final int expectedChocolate = inventoryData.originalChocolate + inventoryData.newChocolate;
 
-        // Get the inventory of the coffeeMaker and break it into its individual
-        // components
-        final String unparsedInventory = coffeeMaker.checkInventory();
-        final String[] inventoryComponents = unparsedInventory.split( "\n" );
-
-        int coffee2 = 0;
-        int milk2 = 0;
-        int sugar2 = 0;
-        int chocolate2 = 0;
-        for ( int i = 0; i < inventoryComponents.length; i++ ) {
-            final String c = inventoryComponents[i];
-            if ( c.toLowerCase().contains( "coffee" ) ) {
-                coffee2 = Integer.parseInt( c.replaceAll( "\\D+", "" ) );
-            }
-            if ( c.toLowerCase().contains( "milk" ) ) {
-                milk2 = Integer.parseInt( c.replaceAll( "\\D+", "" ) );
-            }
-            if ( c.toLowerCase().contains( "sugar" ) ) {
-                sugar2 = Integer.parseInt( c.replaceAll( "\\D+", "" ) );
-            }
-            if ( c.toLowerCase().contains( "chocolate" ) ) {
-                chocolate2 = Integer.parseInt( c.replaceAll( "\\D+", "" ) );
-            }
-        }
+        final Inventory inventory = Inventory.getInventory();
+        final int coffee2 = inventory.getCoffee();
+        final int milk2 = inventory.getMilk();
+        final int sugar2 = inventory.getSugar();
+        final int chocolate2 = inventory.getChocolate();
 
         // Verify that the inventory is correct
         Assert.assertEquals( "Coffee not added correctly", expectedCoffee, coffee2 );
@@ -344,30 +240,11 @@ public class InventoryStepDefs {
     @Then ( "^the inventory of the CoffeeMaker is successfully updated$" )
     public void inventoryUpdated () {
 
-        // Get the inventory of the coffeeMaker and break it into its individual
-        // components
-        final String unparsedInventory = coffeeMaker.checkInventory();
-        final String[] inventoryComponents = unparsedInventory.split( "\n" );
-
-        int coffee2 = 0;
-        int milk2 = 0;
-        int sugar2 = 0;
-        int chocolate2 = 0;
-        for ( int i = 0; i < inventoryComponents.length; i++ ) {
-            final String c = inventoryComponents[i];
-            if ( c.toLowerCase().contains( "coffee" ) ) {
-                coffee2 = Integer.parseInt( c.replaceAll( "\\D+", "" ) );
-            }
-            if ( c.toLowerCase().contains( "milk" ) ) {
-                milk2 = Integer.parseInt( c.replaceAll( "\\D+", "" ) );
-            }
-            if ( c.toLowerCase().contains( "sugar" ) ) {
-                sugar2 = Integer.parseInt( c.replaceAll( "\\D+", "" ) );
-            }
-            if ( c.toLowerCase().contains( "chocolate" ) ) {
-                chocolate2 = Integer.parseInt( c.replaceAll( "\\D+", "" ) );
-            }
-        }
+        final Inventory inventory = Inventory.getInventory();
+        final int coffee2 = inventory.getCoffee();
+        final int milk2 = inventory.getMilk();
+        final int sugar2 = inventory.getSugar();
+        final int chocolate2 = inventory.getChocolate();
 
         // Verify that the inventory is correct
         Assert.assertEquals( "Coffee not added correctly", inventoryData.newCoffee, coffee2 );
@@ -375,6 +252,15 @@ public class InventoryStepDefs {
         Assert.assertEquals( "Sugar not added correctly", inventoryData.newSugar, sugar2 );
         Assert.assertEquals( "Chocolate not added correctly", inventoryData.newChocolate, chocolate2 );
 
+        inventoryData.newCoffee = 0;
+        inventoryData.newMilk = 0;
+        inventoryData.newSugar = 0;
+        inventoryData.newChocolate = 0;
+        inventoryData.originalCoffee = 0;
+        inventoryData.originalMilk = 0;
+        inventoryData.originalSugar = 0;
+        inventoryData.originalChocolate = 0;
+        inventoryData.errorMessage = "";
     }
 
     /**

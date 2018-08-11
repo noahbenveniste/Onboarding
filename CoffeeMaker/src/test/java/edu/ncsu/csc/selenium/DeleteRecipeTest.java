@@ -6,8 +6,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openqa.selenium.By;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.htmlunit.HtmlUnitDriver;
 
 /**
  * Tests Delete Recipe functionality.
@@ -19,7 +17,6 @@ import org.openqa.selenium.htmlunit.HtmlUnitDriver;
 public class DeleteRecipeTest extends SeleniumTest {
 
     /** The URL for CoffeeMaker - change as needed */
-    private WebDriver          driver;
     private String             baseUrl;
     private final StringBuffer verificationErrors = new StringBuffer();
 
@@ -31,7 +28,6 @@ public class DeleteRecipeTest extends SeleniumTest {
         super.setUp();
 
         recipeName = "CoffeeRecipe";
-        driver = new HtmlUnitDriver( true );
         baseUrl = "http://localhost:8080";
         driver.manage().timeouts().implicitlyWait( 10, TimeUnit.SECONDS );
 
@@ -55,16 +51,14 @@ public class DeleteRecipeTest extends SeleniumTest {
      * @throws Exception
      */
     public void delete () throws Exception {
+        waitForAngular();
         driver.get( baseUrl + "" );
         driver.findElement( By.linkText( "Delete Recipe" ) ).click();
 
         // Select the recipe to delete and delete it.
         driver.findElement( By.cssSelector( "input[type=\"radio\"]" ) ).click();
         driver.findElement( By.cssSelector( "input[type=\"submit\"]" ) ).click();
-
-        driver.get( baseUrl + "" );
-        driver.findElement( By.linkText( "Delete Recipe" ) ).click();
-        assertTrue( !driver.getPageSource().contains( recipeName ) );
+        assertTextPresent( "Recipe deleted successfully", driver );
 
         driver.findElement( By.linkText( "Home" ) ).click();
     }
@@ -95,13 +89,12 @@ public class DeleteRecipeTest extends SeleniumTest {
         driver.findElement( By.cssSelector( "input[type=\"submit\"]" ) ).click();
 
         // Make sure the proper message was displayed.
-        assertTrue( driver.getPageSource().contains( "Recipe Created" ) );
+        assertTextPresent( "Recipe Created", driver );
     }
 
     @Override
     @After
-    public void tearDown () throws Exception {
-        driver.quit();
+    public void tearDown () {
         final String verificationErrorString = verificationErrors.toString();
         if ( !"".equals( verificationErrorString ) ) {
             fail( verificationErrorString );

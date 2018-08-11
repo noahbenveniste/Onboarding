@@ -9,8 +9,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openqa.selenium.By;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.htmlunit.HtmlUnitDriver;
 
 /**
  * Tests the update inventory functionality.
@@ -20,7 +18,6 @@ import org.openqa.selenium.htmlunit.HtmlUnitDriver;
 public class UpdateInventoryTest extends SeleniumTest {
 
     /** The URL for CoffeeMaker - change as needed */
-    private WebDriver          driver;
     private String             baseUrl;
     private final StringBuffer verificationErrors = new StringBuffer();
 
@@ -29,7 +26,6 @@ public class UpdateInventoryTest extends SeleniumTest {
     protected void setUp () throws Exception {
         super.setUp();
 
-        driver = new HtmlUnitDriver(true);
         baseUrl = "http://localhost:8080";
         driver.manage().timeouts().implicitlyWait( 10, TimeUnit.SECONDS );
 
@@ -67,8 +63,7 @@ public class UpdateInventoryTest extends SeleniumTest {
 
     @Override
     @After
-    public void tearDown () throws Exception {
-        driver.quit();
+    public void tearDown () {
         final String verificationErrorString = verificationErrors.toString();
         if ( !"".equals( verificationErrorString ) ) {
             fail( verificationErrorString );

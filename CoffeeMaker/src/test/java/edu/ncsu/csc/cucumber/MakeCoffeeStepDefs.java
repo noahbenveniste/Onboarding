@@ -5,7 +5,9 @@ import org.junit.Assert;
 import cucumber.api.java.en.Given;
 import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
-import edu.ncsu.csc.coffee_maker.models.CoffeeMaker;
+import edu.ncsu.csc.coffee_maker.controllers.APICoffeeController;
+import edu.ncsu.csc.coffee_maker.models.persistent.DomainObject;
+import edu.ncsu.csc.coffee_maker.models.persistent.Inventory;
 import edu.ncsu.csc.coffee_maker.models.persistent.Recipe;
 import edu.ncsu.csc.test_utils.SharedCoffeeMakerData;
 
@@ -17,20 +19,16 @@ import edu.ncsu.csc.test_utils.SharedCoffeeMakerData;
  *
  */
 public class MakeCoffeeStepDefs {
-    private final CoffeeMaker           coffeeMaker;
     private final SharedCoffeeMakerData makerData;
 
     /**
      * Constructor for the StepDefs
      *
-     * @param coffeemaker
-     *            The CoffeeMaker object used by the system
      * @param md
      *            The CoffeeMakerData that is used to ensure that actions taken
      *            resulted in the correct result
      */
-    public MakeCoffeeStepDefs ( final CoffeeMaker coffeemaker, final SharedCoffeeMakerData md ) {
-        this.coffeeMaker = coffeemaker;
+    public MakeCoffeeStepDefs ( final SharedCoffeeMakerData md ) {
         this.makerData = md;
     }
 
@@ -50,70 +48,16 @@ public class MakeCoffeeStepDefs {
     @Given ( "^(\\d+) coffee, (\\d+) milk, (\\d+) sugar, and (\\d+) chocolate currently in the CoffeeMaker$" )
     public void initialInventory ( final int originalCoffee, final int originalMilk, final int originalSugar,
             final int originalChocolate ) {
+
         makerData.originalCoffee = originalCoffee;
         makerData.originalMilk = originalMilk;
         makerData.originalSugar = originalSugar;
         makerData.originalChocolate = originalChocolate;
 
-        final String unparsedInventory = coffeeMaker.checkInventory();
-        final String[] inventoryComponents = unparsedInventory.split( "\n" );
-
-        int coffee1 = 0;
-        int milk1 = 0;
-        int sugar1 = 0;
-        int chocolate1 = 0;
-        for ( int i = 0; i < inventoryComponents.length; i++ ) {
-            final String c = inventoryComponents[i];
-            if ( c.toLowerCase().contains( "coffee" ) ) {
-                coffee1 = Integer.parseInt( c.replaceAll( "\\D+", "" ) );
-            }
-            if ( c.toLowerCase().contains( "milk" ) ) {
-                milk1 = Integer.parseInt( c.replaceAll( "\\D+", "" ) );
-            }
-            if ( c.toLowerCase().contains( "sugar" ) ) {
-                sugar1 = Integer.parseInt( c.replaceAll( "\\D+", "" ) );
-            }
-            if ( c.toLowerCase().contains( "chocolate" ) ) {
-                chocolate1 = Integer.parseInt( c.replaceAll( "\\D+", "" ) );
-            }
-        }
-        int coffeeToAdd = originalCoffee - coffee1;
-        int milkToAdd = originalMilk - milk1;
-        int sugarToAdd = originalSugar - sugar1;
-        int chocolateToAdd = originalChocolate - chocolate1;
-
-        int subtractCoffee = 0, subtractMilk = 0, subtractSugar = 0, subtractChocolate = 0;
-        boolean tooMuchInventory = false;
-        if ( coffeeToAdd < 0 ) {
-            subtractCoffee = 0 - coffeeToAdd;
-            coffeeToAdd = 0;
-            tooMuchInventory = true;
-        }
-        if ( milkToAdd < 0 ) {
-            subtractMilk = 0 - milkToAdd;
-            milkToAdd = 0;
-            tooMuchInventory = true;
-        }
-        if ( sugarToAdd < 0 ) {
-            subtractSugar = 0 - sugarToAdd;
-            sugarToAdd = 0;
-            tooMuchInventory = true;
-        }
-        if ( chocolateToAdd < 0 ) {
-            subtractChocolate = 0 - chocolateToAdd;
-            chocolateToAdd = 0;
-            tooMuchInventory = true;
-        }
-        if ( tooMuchInventory ) {
-            removeInventoryHelper( subtractCoffee, subtractMilk, subtractSugar, subtractChocolate );
-        }
-
-        try {
-            coffeeMaker.addInventory( coffeeToAdd, milkToAdd, sugarToAdd, chocolateToAdd );
-        }
-        catch ( final Exception e ) {
-            Assert.fail( "Inventory not added. InventoryException thrown" );
-        }
+        DomainObject.deleteAll( Inventory.class );
+        final Inventory i = Inventory.getInventory();
+        i.addIngredients( originalCoffee, originalMilk, originalSugar, originalChocolate );
+        i.save();
     }
 
     /**
@@ -133,27 +77,16 @@ public class MakeCoffeeStepDefs {
      */
     public void removeInventoryHelper ( final int removeCoffee, final int removeMilk, final int removeSugar,
             final int removeChocolate ) {
-        // add a recipe that uses the exact amounts needed to remove
-        final Recipe tempRecipe = new Recipe();
-        try {
-            tempRecipe.setName( "tempRecipeRemoveInventory" );
-            tempRecipe.setCoffee( removeCoffee );
-            tempRecipe.setMilk( removeMilk );
-            tempRecipe.setSugar( removeSugar );
-            tempRecipe.setChocolate( removeChocolate );
-            tempRecipe.setPrice( 0 );
-            coffeeMaker.addRecipe( tempRecipe );
-        }
-        catch ( final Exception e ) {
-            e.printStackTrace();
-        }
 
-        // purchase the amount of coffee necessary to deplete the inventory
-        coffeeMaker.makeCoffee( tempRecipe, 0 );
+        final Inventory currentInventory = Inventory.getInventory();
 
-        // remove the temporary recipe so that it doesn't impact future
-        // tests/steps
-        coffeeMaker.deleteRecipe( tempRecipe );
+        final Recipe r = new Recipe();
+        r.setCoffee( removeCoffee );
+        r.setMilk( removeMilk );
+        r.setSugar( removeSugar );
+        r.setChocolate( removeChocolate );
+
+        currentInventory.useIngredients( r );
     }
 
     /**
@@ -169,15 +102,7 @@ public class MakeCoffeeStepDefs {
     @Given ( "^the CoffeeMaker has (\\d+) Recipes$" )
     public void existingRecipes ( final int numRecipes ) throws Exception {
         // Check current number of recipes in Recipe Book
-        final int total = this.coffeeMaker.getRecipes().size();
-        if ( total != 0 ) {
-            int count = 0;
-            while ( count < total ) {
-                this.coffeeMaker.deleteRecipe( 0 );
-                count++;
-            }
-            Assert.assertEquals( 0, this.coffeeMaker.getRecipes().size() );
-        }
+        DomainObject.deleteAll( Recipe.class );
 
         if ( numRecipes == 0 ) {
             return; // no need to execute the rest of the code
@@ -201,7 +126,7 @@ public class MakeCoffeeStepDefs {
                     catch ( final Exception e ) {
                         Assert.fail( "Error in creating recipes" );
                     }
-                    this.coffeeMaker.addRecipe( testR );
+                    testR.save();
 
                 }
                 catch ( final Exception e ) {
@@ -240,13 +165,14 @@ public class MakeCoffeeStepDefs {
             newR.setMilk( milkAmt );
             newR.setSugar( sugarAmt );
             newR.setChocolate( chocolateAmt );
+            newR.save();
+            makerData.currentRecipe = newR;
         }
         catch ( final Exception e ) {
             makerData.errorMessage = e.getMessage();
             Assert.fail( "Unable to create new Recipe" );
         }
-        makerData.currentRecipe = newR;
-        coffeeMaker.addRecipe( newR );
+
     }
 
     /**
@@ -264,7 +190,7 @@ public class MakeCoffeeStepDefs {
             try {
                 final int money = Integer.parseInt( sMoney );
                 makerData.moneyGiven = money;
-                makerData.change = coffeeMaker.makeCoffee( makerData.currentRecipe, money );
+                makerData.change = APICoffeeController.makeCoffee( makerData.currentRecipe, money );
             }
             catch ( final NumberFormatException nfe ) {
                 throw new NumberFormatException( "Money must be a positive integer" );
@@ -307,10 +233,12 @@ public class MakeCoffeeStepDefs {
         final int expectedSugar = makerData.originalSugar - makerData.currentRecipe.getSugar();
         final int expectedChocolate = makerData.originalChocolate - makerData.currentRecipe.getChocolate();
 
-        Assert.assertEquals( expectedCoffee, coffeeMaker.getInventory().getCoffee() );
-        Assert.assertEquals( expectedMilk, coffeeMaker.getInventory().getMilk() );
-        Assert.assertEquals( expectedSugar, coffeeMaker.getInventory().getSugar() );
-        Assert.assertEquals( expectedChocolate, coffeeMaker.getInventory().getChocolate() );
+        final Inventory inventory = Inventory.getInventory();
+
+        Assert.assertEquals( expectedCoffee, inventory.getCoffee() );
+        Assert.assertEquals( expectedMilk, inventory.getMilk() );
+        Assert.assertEquals( expectedSugar, inventory.getSugar() );
+        Assert.assertEquals( expectedChocolate, inventory.getChocolate() );
     }
 
     /**
@@ -319,10 +247,12 @@ public class MakeCoffeeStepDefs {
      */
     @Then ( "^the inventory is not changed$" )
     public void inventoryNotChanged () {
-        Assert.assertEquals( makerData.originalCoffee, coffeeMaker.getInventory().getCoffee() );
-        Assert.assertEquals( makerData.originalMilk, coffeeMaker.getInventory().getMilk() );
-        Assert.assertEquals( makerData.originalSugar, coffeeMaker.getInventory().getSugar() );
-        Assert.assertEquals( makerData.originalChocolate, coffeeMaker.getInventory().getChocolate() );
+        final Inventory inventory = Inventory.getInventory();
+
+        Assert.assertEquals( makerData.originalCoffee, inventory.getCoffee() );
+        Assert.assertEquals( makerData.originalMilk, inventory.getMilk() );
+        Assert.assertEquals( makerData.originalSugar, inventory.getSugar() );
+        Assert.assertEquals( makerData.originalChocolate, inventory.getChocolate() );
     }
 
 }
