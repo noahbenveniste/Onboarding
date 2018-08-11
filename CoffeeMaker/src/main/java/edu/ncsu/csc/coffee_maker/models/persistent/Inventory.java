@@ -1,6 +1,6 @@
 package edu.ncsu.csc.coffee_maker.models.persistent;
 
-import java.util.ArrayList;
+import java.util.List;
 
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
@@ -9,26 +9,21 @@ import javax.persistence.Id;
 import javax.persistence.Table;
 import javax.validation.constraints.Min;
 
-import org.hibernate.Session;
-import org.hibernate.criterion.DetachedCriteria;
-import org.hibernate.criterion.Projections;
-import org.hibernate.criterion.Property;
 import org.springframework.validation.annotation.Validated;
-
-import edu.ncsu.csc.coffee_maker.util.HibernateUtil;
 
 /**
  * Inventory for the coffee maker. Inventory is tied to the database using
  * Hibernate libraries.
  *
  * @author Kai Presler-Marshall
+ * @author Michelle Lemons
  * @author Elizabeth Gilbert
  * @author Sarah Heckman
  */
 @Entity
 @Table ( name = "inventory" )
 @Validated
-public class Inventory {
+public class Inventory extends DomainObject<Inventory> {
 
     private Long id;
     @Min ( 0 )
@@ -41,8 +36,7 @@ public class Inventory {
     private int  chocolate;
 
     /**
-     * Creates a coffee maker inventory object and fills each item in the
-     * inventory with 15 units.
+     * Empty constructor for Hibernate
      */
     public Inventory () {
         // Intentionally empty so that Hibernate can instantiate
@@ -66,65 +60,6 @@ public class Inventory {
         setMilk( milk );
         setSugar( sugar );
         setChocolate( chocolate );
-
-        // Put this into the DB
-        final Session session = HibernateUtil.getSessionFactory().openSession();
-        session.beginTransaction();
-        session.save( this );
-        session.getTransaction().commit();
-        session.close();
-    }
-
-    /**
-     * Pulls the latest information from the update and sets the fields.
-     */
-    @SuppressWarnings ( "unchecked" )
-    public void pullFromDB () {
-        // Inventory entry with the highest ID should be
-        // the current inventory.
-        final Session session = HibernateUtil.getSessionFactory().openSession();
-        session.beginTransaction();
-
-        final DetachedCriteria maxId = DetachedCriteria.forClass( Inventory.class )
-                .setProjection( Projections.max( "id" ) );
-        final ArrayList<Inventory> result = (ArrayList<Inventory>) session.createCriteria( Inventory.class )
-                .add( Property.forName( "id" ).eq( maxId ) ).list();
-
-        session.getTransaction().commit();
-        session.close();
-
-        if ( !result.isEmpty() ) {
-            // Update the Inventory instance to reflect DB result
-            final Inventory i = result.get( 0 );
-
-            setCoffee( i.getCoffee() );
-            setMilk( i.getMilk() );
-            setSugar( i.getSugar() );
-            setChocolate( i.getChocolate() );
-        }
-        else {
-            // No DB records yet, default to empty inventory
-            setCoffee( 0 );
-            setMilk( 0 );
-            setSugar( 0 );
-            setChocolate( 0 );
-
-            // Put this into the DB
-            pushToDB();
-        }
-
-    }
-
-    /**
-     * Saves the inforamtion in the fields to the database.
-     */
-    public void pushToDB () {
-        // Put this into the DB
-        final Session session = HibernateUtil.getSessionFactory().openSession();
-        session.beginTransaction();
-        session.save( this );
-        session.getTransaction().commit();
-        session.close();
     }
 
     /**
@@ -132,8 +67,9 @@ public class Inventory {
      *
      * @return long
      */
+    @Override
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue ( strategy = GenerationType.IDENTITY )
     public Long getId () {
         return id;
     }
@@ -367,10 +303,6 @@ public class Inventory {
             setMilk( milk - r.getMilk() );
             setSugar( sugar - r.getSugar() );
             setChocolate( chocolate - r.getChocolate() );
-
-            // Add updated inventory to the DB
-            pushToDB();
-
             return true;
         }
         else {
@@ -401,9 +333,6 @@ public class Inventory {
         setSugar( this.sugar + sugar );
         setChocolate( this.chocolate + chocolate );
 
-        // Update the DB
-        pushToDB();
-
         return true;
     }
 
@@ -428,5 +357,26 @@ public class Inventory {
         buf.append( getChocolate() );
         buf.append( "\n" );
         return buf.toString();
+    }
+
+    /**
+     * Gets the system's inventory
+     *
+     * @return inventory for the CoffeeMaker
+     */
+    @SuppressWarnings ( "unchecked" )
+    public static Inventory getInventory () {
+        final List<Inventory> inventoryList = (List<Inventory>) DomainObject.getAll( Inventory.class );
+        if ( inventoryList != null && inventoryList.size() == 1 ) {
+            return inventoryList.get( 0 );
+        }
+        else {
+            // initialize the inventory with 0 of everything
+            final Inventory i = new Inventory( 0, 0, 0, 0 );
+            i.save();
+            return i;
+        }
+
+        
     }
 }

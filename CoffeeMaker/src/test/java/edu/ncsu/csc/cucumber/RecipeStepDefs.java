@@ -7,8 +7,7 @@ import org.junit.Assert;
 import cucumber.api.java.en.Given;
 import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
-import edu.ncsu.csc.coffee_maker.models.CoffeeMaker;
-import edu.ncsu.csc.coffee_maker.models.RecipeBook;
+import edu.ncsu.csc.coffee_maker.models.persistent.DomainObject;
 import edu.ncsu.csc.coffee_maker.models.persistent.Recipe;
 import edu.ncsu.csc.test_utils.SharedRecipeData;
 
@@ -21,22 +20,17 @@ import edu.ncsu.csc.test_utils.SharedRecipeData;
  *
  */
 public class RecipeStepDefs {
-    private final CoffeeMaker      coffeeMaker;
     private final SharedRecipeData recipeData;
 
     /**
      * Constructor for the RecipeStepDefs. Used to keep track of CoffeeMaker's
      * state to ensure that the test completed successfully.
      *
-     * @param coffeemaker
-     *            CoffeeMaker object; used to properly unit test it without
-     *            Spring
      * @param srd
      *            SharedRecipeData; a backup of the recipes to ensure that the
      *            CoffeeMaker is behaving appropriately.
      */
-    public RecipeStepDefs ( final CoffeeMaker coffeemaker, final SharedRecipeData srd ) {
-        this.coffeeMaker = coffeemaker;
+    public RecipeStepDefs ( final SharedRecipeData srd ) {
         this.recipeData = srd;
     }
 
@@ -53,14 +47,10 @@ public class RecipeStepDefs {
     @Given ( "^the CoffeeMaker already has (\\d+) Recipes$" )
     public void existingRecipes ( final int numRecipes ) throws Exception {
         // Check current number of recipes in Recipe Book
-        final int total = this.coffeeMaker.getRecipes().size();
+        final int total = Recipe.getAll().size();
         if ( total != 0 ) {
-            int count = 0;
-            while ( count < total ) {
-                this.coffeeMaker.deleteRecipe( 0 );
-                count++;
-            }
-            Assert.assertEquals( 0, this.coffeeMaker.getRecipes().size() );
+            DomainObject.deleteAll( Recipe.class );
+            Assert.assertEquals( 0, Recipe.getAll().size() );
         }
 
         if ( numRecipes == 0 ) {
@@ -86,7 +76,8 @@ public class RecipeStepDefs {
                     catch ( final Exception e ) {
                         Assert.fail( "Error in creating recipes" );
                     }
-                    recipeData.latestRecipeAdded = this.coffeeMaker.addRecipe( testR );
+                    testR.save();
+                    recipeData.latestRecipeAdded = Recipe.getAll().contains( testR );
 
                 }
                 catch ( final Exception e ) {
@@ -115,12 +106,10 @@ public class RecipeStepDefs {
      */
     @When ( "^I delete the recipe called (.+)$" )
     public void validDeleteByName ( final String name ) {
-
-        final RecipeBook book = coffeeMaker.getRecipeBook();
-        final Recipe toDelete = book.findRecipe( name );
+        final Recipe toDelete = Recipe.getByName( name );
         recipeData.currentRecipe = toDelete;
 
-        coffeeMaker.deleteRecipe( toDelete );
+        toDelete.delete();
     }
 
     /**
@@ -132,15 +121,15 @@ public class RecipeStepDefs {
      */
     @When ( "^I attempt to delete a nonexistent recipe called (.+)$" )
     public void invalidDeleteByName ( final String name ) {
-        recipeData.currentRecipeList = (Vector<Recipe>) coffeeMaker.getRecipes();
+        recipeData.currentRecipeList = Recipe.getAll();
 
         final Recipe toDelete = new Recipe();
         toDelete.setName( name );
 
         try {
-            coffeeMaker.deleteRecipe( toDelete );
+            toDelete.delete();
         }
-        catch ( final IllegalArgumentException e ) {
+        catch ( final Exception e ) {
             recipeData.recipeError = e.getMessage();
         }
     }
@@ -176,7 +165,6 @@ public class RecipeStepDefs {
         recipeData.latestRecipeAdded = false;
         final Recipe newR = new Recipe();
         try {
-
             newR.setName( name );
             newR.setPrice( cost );
             newR.setCoffee( coffeeAmt );
@@ -188,9 +176,15 @@ public class RecipeStepDefs {
             recipeData.recipeError = e.getMessage();
             Assert.fail( "Unable to create new Recipe" );
         }
-        recipeData.currentRecipe = newR;
-        final boolean tempCheck = this.coffeeMaker.addRecipe( newR );
-        recipeData.latestRecipeAdded = tempCheck;
+        if ( Recipe.getByName( newR.getName() ) == null && Recipe.getAll().size() < 3 ) {
+            recipeData.currentRecipe = newR;
+            newR.save();
+            recipeData.latestRecipeAdded = true;
+        }
+        else {
+            recipeData.latestRecipeAdded = false;
+        }
+
     }
 
     /**
@@ -233,9 +227,14 @@ public class RecipeStepDefs {
                 throw new NumberFormatException( "Units of must be a positive integer" );
             }
 
-            recipeData.currentRecipe = newR;
-            final boolean tempCheck = this.coffeeMaker.addRecipe( newR );
-            recipeData.latestRecipeAdded = tempCheck;
+            if ( Recipe.getByName( newR.getName() ) == null && Recipe.getAll().size() < 3 ) {
+                recipeData.currentRecipe = newR;
+                newR.save();
+                recipeData.latestRecipeAdded = true;
+            }
+            else {
+                recipeData.latestRecipeAdded = false;
+            }
 
         }
         catch ( final Exception e ) {
@@ -265,7 +264,6 @@ public class RecipeStepDefs {
 
         recipeData.recipeError = "";
         final Recipe newR = recipeData.currentRecipe;
-        recipeData.index = coffeeMaker.getRecipes().indexOf( newR );
 
         try {
             newR.setPrice( cost );
@@ -280,7 +278,7 @@ public class RecipeStepDefs {
         }
         recipeData.currentRecipe = newR;
 
-        coffeeMaker.editRecipe( recipeData.index, newR );
+        newR.save();
     }
 
     /**
@@ -304,7 +302,6 @@ public class RecipeStepDefs {
         // TODO
         recipeData.recipeError = "";
         final Recipe newR = new Recipe();
-        recipeData.index = coffeeMaker.getRecipes().indexOf( recipeData.currentRecipe );
         try {
             try {
                 newR.setPrice( Integer.parseInt( cost ) );
@@ -340,32 +337,6 @@ public class RecipeStepDefs {
     }
 
     /**
-     * Delete the recipe at index i of the CoffeeMaker's RecipeBook
-     *
-     * @param index
-     *            Index from which to delete a recipe
-     */
-    @When ( "^I attempt to delete the recipe at index (-?\\d+)$" )
-    public void validDeleteByIndex ( final int index ) {
-        recipeData.index = index;
-        recipeData.currentRecipeList = (Vector<Recipe>) coffeeMaker.getRecipes();
-        final Vector<Recipe> recipes = (Vector<Recipe>) coffeeMaker.getRecipes();
-        try {
-            recipeData.currentRecipe = recipes.get( index );
-        }
-        catch ( final ArrayIndexOutOfBoundsException e ) {
-            recipeData.currentRecipe = null;
-        }
-
-        try {
-            coffeeMaker.deleteRecipe( index );
-        }
-        catch ( final ArrayIndexOutOfBoundsException e ) {
-            recipeData.recipeError = e.getMessage();
-        }
-    }
-
-    /**
      * Ensure that an error occurred when trying to perform an action
      */
     @Then ( "^an error occurs$" )
@@ -380,7 +351,7 @@ public class RecipeStepDefs {
     @Then ( "^the recipe is successfully edited$" )
     public void recipeEditedSuccessfully () {
         Assert.assertEquals( "Recipe was not edited correctly", recipeData.currentRecipe,
-                coffeeMaker.getRecipes().get( recipeData.index ) );
+                Recipe.getByName( recipeData.currentRecipe.getName() ) );
     }
 
     /**
@@ -390,7 +361,7 @@ public class RecipeStepDefs {
     @Then ( "^the recipe is not edited$" )
     public void recipeEditedUnsuccessfully () {
         final Recipe current = recipeData.currentRecipe;
-        final Recipe other = coffeeMaker.getRecipes().get( recipeData.index );
+        final Recipe other = Recipe.getByName( recipeData.currentRecipe.getName() );
         Assert.assertNotEquals( "Recipe was edited when it shouldn't have been", current, other );
     }
 
@@ -399,7 +370,7 @@ public class RecipeStepDefs {
      */
     @Then ( "^the recipe is successfully deleted by index$" )
     public void recipeDeletedByIndex () {
-        final Vector<Recipe> recipes = (Vector<Recipe>) coffeeMaker.getRecipes();
+        final Vector<Recipe> recipes = (Vector<Recipe>) Recipe.getAll();
         if ( recipes.size() > 0 ) { // If size is zero, successfully deleted it.
             if ( recipeData.index < recipes.size() ) {
                 Assert.assertNotEquals( "Recipe was not successfully deleted by index", recipeData.currentRecipe,
@@ -418,7 +389,7 @@ public class RecipeStepDefs {
     @Then ( "^the recipe book of the CoffeeMaker is not changed$" )
     public void recipeNotDeleted () {
         Assert.assertEquals( "The recipe book changed when it shouldn't have", recipeData.currentRecipeList,
-                coffeeMaker.getRecipes() );
+                Recipe.getAll() );
     }
 
     /**
@@ -426,9 +397,8 @@ public class RecipeStepDefs {
      */
     @Then ( "^the recipe is successfully deleted by name$" )
     public void recipeDeletedByName () {
-        final RecipeBook book = coffeeMaker.getRecipeBook();
         Assert.assertNull( "Recipe still exists in Recipe Book",
-                book.findRecipe( recipeData.currentRecipe.getName() ) );
+                Recipe.getByName( recipeData.currentRecipe.getName() ) );
     }
 
     /**
@@ -437,7 +407,7 @@ public class RecipeStepDefs {
     @Then ( "^the recipe is not added$" )
     public void recipeNotAdded () {
         Assert.assertFalse( "Adding Recipe returns true when it should return false", recipeData.latestRecipeAdded );
-        final boolean recipeInList = coffeeMaker.getRecipes().contains( recipeData.currentRecipe );
+        final boolean recipeInList = Recipe.getAll().contains( recipeData.currentRecipe );
         Assert.assertFalse( "Recipe added to coffee maker when it should not be", recipeInList );
 
     }
@@ -449,7 +419,7 @@ public class RecipeStepDefs {
     @Then ( "^the recipe is successfully added$" )
     public void recipeSuccessfullyAdded () {
         Assert.assertTrue( "Adding Recipe returns false when it should return true", recipeData.latestRecipeAdded );
-        final boolean recipeInList = coffeeMaker.getRecipes().contains( recipeData.currentRecipe );
+        final boolean recipeInList = Recipe.getAll().contains( recipeData.currentRecipe );
         Assert.assertTrue( "Recipe NOT added to coffee maker when it should be", recipeInList );
 
     }
@@ -472,7 +442,6 @@ public class RecipeStepDefs {
     @Then ( "^the error for an invalid amount of (.+) in a recipe occurs$" )
     public void invalidIngredientError ( final String ingredient ) {
         Assert.assertTrue( !ingredient.isEmpty() );
-
     }
 
     /**
@@ -482,7 +451,7 @@ public class RecipeStepDefs {
     public void secondRecipeNotAdded () {
         Assert.assertFalse( "Adding Recipe returns true when it should return false", recipeData.latestRecipeAdded );
         int numRecipeInList = 0;
-        for ( final Recipe r : coffeeMaker.getRecipes() ) {
+        for ( final Recipe r : Recipe.getAll() ) {
             if ( r.equals( recipeData.currentRecipe ) ) {
                 numRecipeInList++;
             }

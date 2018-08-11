@@ -3,11 +3,10 @@ package edu.ncsu.csc.selenium;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
 import org.openqa.selenium.By;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.htmlunit.HtmlUnitDriver;
 
 /**
  * Tests Add Recipe functionality.
@@ -18,7 +17,6 @@ import org.openqa.selenium.htmlunit.HtmlUnitDriver;
 public class AddRecipeTest extends SeleniumTest {
 
     /** The URL for CoffeeMaker - change as needed */
-    private WebDriver          driver;
     private String             baseUrl;
     private final StringBuffer verificationErrors = new StringBuffer();
 
@@ -27,7 +25,6 @@ public class AddRecipeTest extends SeleniumTest {
     protected void setUp () throws Exception {
         super.setUp();
 
-        driver = new HtmlUnitDriver(true);
         baseUrl = "http://localhost:8080";
         driver.manage().timeouts().implicitlyWait( 10, TimeUnit.SECONDS );
 
@@ -49,7 +46,7 @@ public class AddRecipeTest extends SeleniumTest {
         driver.findElement( By.name( "sugar" ) ).clear();
         driver.findElement( By.name( "sugar" ) ).sendKeys( "1" );
         driver.findElement( By.name( "chocolate" ) ).clear();
-        driver.findElement( By.name( "chocolate" ) ).sendKeys( "0" );
+        driver.findElement( By.name( "chocolate" ) ).sendKeys( "1" );
 
         // Submit the recipe.
         driver.findElement( By.cssSelector( "input[type=\"submit\"]" ) ).click();
@@ -65,9 +62,9 @@ public class AddRecipeTest extends SeleniumTest {
         addRecipeHelper();
 
         // Make sure the proper message was displayed.
-        assertTrue( driver.getPageSource().contains( "Recipe Created" ) );
+        assertTextPresent( "Recipe Created", driver );
 
-        System.out.println( driver.getPageSource() );
+        System.out.println( "Recipe created" );
     }
 
     /**
@@ -80,17 +77,22 @@ public class AddRecipeTest extends SeleniumTest {
     public void testAddRecipe2 () throws Exception {
         addRecipeHelper();
 
-        assertTrue( driver.getPageSource().contains( "Error while adding recipe." ) );
+        assertTextPresent( "Error while adding recipe", driver );
     }
 
     @Override
     @After
-    public void tearDown () throws Exception {
-        driver.quit();
+    public void tearDown () {
         final String verificationErrorString = verificationErrors.toString();
         if ( !"".equals( verificationErrorString ) ) {
             fail( verificationErrorString );
         }
+    }
+    
+    @AfterClass
+    @Override
+    public void close() {
+    	super.close();
     }
 
 }

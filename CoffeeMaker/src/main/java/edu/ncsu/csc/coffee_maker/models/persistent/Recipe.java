@@ -1,5 +1,7 @@
 package edu.ncsu.csc.coffee_maker.models.persistent;
 
+import java.util.List;
+
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
@@ -8,6 +10,7 @@ import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
 
 import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.criterion.Criterion;
 
 /**
  * Recipe for the coffee maker. Recipe is tied to the database using Hibernate
@@ -19,7 +22,7 @@ import org.hibernate.annotations.GenericGenerator;
  */
 @Entity
 @Table ( name = "recipes" )
-public class Recipe {
+public class Recipe extends DomainObject<Recipe> {
 
     private Long    id;
 
@@ -59,6 +62,7 @@ public class Recipe {
      *
      * @return the ID
      */
+    @Override
     @Id
     @GeneratedValue ( generator = "increment" )
     @GenericGenerator ( name = "increment", strategy = "increment" )
@@ -244,6 +248,39 @@ public class Recipe {
             return false;
         }
         return true;
+    }
+
+    /**
+     * Get all the associated Recipes given criteria constraints
+     *
+     * @param criteriaList
+     *            list of what to search for
+     * @return list of recipes that match the given criterias
+     */
+    @SuppressWarnings ( "unchecked" )
+    public static List<Recipe> getWhere ( List<Criterion> criteriaList ) {
+        return (List<Recipe>) DomainObject.getWhere( Recipe.class, criteriaList );
+    }
+
+    /**
+     * Get all recipes in the system
+     *
+     * @return all recipes currently stored
+     */
+    @SuppressWarnings ( "unchecked" )
+    public static List<Recipe> getAll () {
+        return (List<Recipe>) DomainObject.getAll( Recipe.class );
+    }
+
+    /**
+     * Gets a recipe from a given name
+     *
+     * @param name
+     *            name of the recipe
+     * @return recipe with the given name
+     */
+    public static Recipe getByName ( String name ) {
+        return (Recipe) DomainObject.getBy( Recipe.class, "name", name );
     }
 
 }
