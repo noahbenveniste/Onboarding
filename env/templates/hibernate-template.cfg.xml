@@ -20,7 +20,7 @@
 		<!-- Connection properties -->
 		<property name="hibernate.connection.driver_class">com.mysql.jdbc.Driver</property>
 		<property name="hibernate.connection.url">
-			jdbc:mysql://192.168.8.8/coffeemaker?createDatabaseIfNotExist=true
+			jdbc:mysql://localhost/coffeemaker?createDatabaseIfNotExist=true
 		</property>
 
 		<property name="hibernate.connection.username">root</property>
