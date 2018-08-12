@@ -1,7 +1,7 @@
 ---
 name: onboard
-vm:
-  ip: "192.168.8.8"
+persistent:
+  ports: 8080
 vars:
   - mysql_password:
       prompt: Type your password for mysql server
@@ -18,6 +18,8 @@ config:
   - template: 
       src: env/templates/hibernate-template.cfg.xml 
       dest: /Onboarding/CoffeeMaker/src/main/resources/hibernate.cfg.xml
-start: cd /Onboarding/CoffeeMaker && mvn spring-boot:run
+# start: cd /Onboarding/CoffeeMaker && mvn spring-boot:run
 commands:
-  test: cd /Onboarding/CoffeeMaker && mvn test
+  serve: cd CoffeeMaker && mvn spring-boot:run
+  debug: cd CoffeeMaker && mvnDebug spring-boot:run
+  test: cd CoffeeMaker && mvn test
