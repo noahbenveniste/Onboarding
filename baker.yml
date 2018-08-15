@@ -1,6 +1,7 @@
 ---
 name: onboard
 persistent:
+  ip: 192.168.8.8
   ports: 8080
 vars:
   - mysql_password:
