@@ -1,6 +1,6 @@
 ---
 name: onboard
-persistent:
+vm:
   ip: 192.168.8.8
   ports: 8080
 vars:
@@ -10,7 +10,7 @@ tools:
   - maven
 services:
   - mysql:
-      version: 5.7
+      version: 8
       service_conf: env/templates/mysql.cfg
       client_conf: env/templates/my.cnf
 lang:
