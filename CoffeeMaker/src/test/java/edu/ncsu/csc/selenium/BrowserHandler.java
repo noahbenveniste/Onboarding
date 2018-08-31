@@ -44,7 +44,7 @@ public class BrowserHandler {
 		} else if (Windows()) {
 			options.setBinary("C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe");
 		} else if (Mac()) {
-			options.setBinary("/Applications/Google Chrome/Contents/MacOS/Google Chrome");
+			options.setBinary("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome");
 		}
 
 		driver = new ChromeDriver(options);
