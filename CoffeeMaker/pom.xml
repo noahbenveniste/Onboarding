@@ -78,6 +78,11 @@
 			<artifactId>websocket-api</artifactId>
 			<version>9.2.26.v20180806</version>
 		</dependency>
+		<dependency>
+			<groupId>org.eclipse.jetty.websocket</groupId>
+			<artifactId>websocket-client</artifactId>
+			<version>9.4.12.v20180830</version>
+		</dependency>
 
 		<!-- Hibernate framework -->
 		<dependency>
